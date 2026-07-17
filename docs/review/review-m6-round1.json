@@ -1,0 +1,127 @@
+{
+  "milestone": "M6",
+  "round": 1,
+  "review_status": "PASS",
+  "blocker_count": 0,
+  "major_count": 7,
+  "minor_count": 6,
+  "issues": [
+    {
+      "id": "M6-001",
+      "severity": "MAJOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/GridDispatchServiceImpl.java",
+      "line": 78,
+      "dimension": "performance",
+      "description": "updateGridCapacity 使用 vehicleMapper.selectList(null) 加载全部车辆到内存，然后逐个计算 GeoHash 进行过滤。当车辆数量大时会导致严重的性能问题和内存压力。",
+      "suggestion": "应使用数据库查询进行过滤（如基于经纬度范围查询），避免全表扫描。可在 VehicleMapper 中添加按 GeoHash 前缀查询的方法。"
+    },
+    {
+      "id": "M6-002",
+      "severity": "MAJOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/GridDispatchServiceImpl.java",
+      "line": 105,
+      "dimension": "performance",
+      "description": "updateGridCapacity 中查询活跃订单也使用全表查询 (selectList + QueryWrapper)，然后在内存中对每笔订单计算 GeoHash 进行匹配。全量订单遍历性能低下。",
+      "suggestion": "应改为基于经纬度范围的数据库查询，或添加订单表的 GeoHash 索引字段，在查询时直接过滤。"
+    },
+    {
+      "id": "M6-003",
+      "severity": "MAJOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/GridDispatchServiceImpl.java",
+      "line": 166,
+      "dimension": "performance",
+      "description": "getVehicleDistribution 方法加载全部车辆到内存进行 GeoHash 编码和统计，与 updateGridCapacity 存在相同的全表扫描问题。",
+      "suggestion": "考虑在数据库层面按 GeoHash 分组统计，或使用缓存的分布数据。"
+    },
+    {
+      "id": "M6-004",
+      "severity": "MAJOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/DynamicPricingServiceImpl.java",
+      "line": 121,
+      "dimension": "performance",
+      "description": "calculateDensityCoefficient 和 calculateHistoryCoefficient 分别查询了一次 GridDispatch 表，共两次数据库查询获取同一网格的数据。应在 calculatePrice 中一次查询后将结果传递给两个方法。",
+      "suggestion": "将 GridDispatch 查询提取到 calculatePrice 方法中，将结果作为参数传递给 calculateDensityCoefficient 和 calculateHistoryCoefficient。"
+    },
+    {
+      "id": "M6-005",
+      "severity": "MAJOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/DynamicPricingServiceImpl.java",
+      "line": 51,
+      "dimension": "correctness",
+      "description": "DynamicPricingServiceImpl 未使用 PricingRule 表数据进行定价。PricingRule 实体和 Mapper 已创建，但定价逻辑完全基于硬编码常量和 GridDispatch 的供需数据。设计文档中要求使用定价规则配置，当前实现与设计意图不符。",
+      "suggestion": "应从 tb_pricing_rule 表加载定价规则（如时段系数、密度系数、历史热度系数），而非全部硬编码。至少应支持通过 PricingRule 配置覆盖默认值。"
+    },
+    {
+      "id": "M6-006",
+      "severity": "MAJOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/GeoHashServiceImpl.java",
+      "line": 133,
+      "dimension": "correctness",
+      "description": "getNeighbors 方法通过坐标偏移 + 重新编码来查找邻居，但在精度较高或网格边界处，两个不同方向的偏移可能编码到同一个 GeoHash，或编码到非预期的邻居。标准 GeoHash 邻居算法应使用二进制位操作实现。当前实现可能返回少于 8 个邻居。",
+      "suggestion": "实现标准的 GeoHash 邻居查找算法（基于二进制编码的上下左右邻居计算），或在当前实现中增加验证确保返回恰好 8 个不重复且不等于自身的邻居。"
+    },
+    {
+      "id": "M6-007",
+      "severity": "MAJOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/GridDispatchServiceImpl.java",
+      "line": 69,
+      "dimension": "code_quality",
+      "description": "updateGridCapacity 方法约 90 行，超过 50 行的代码规范限制。方法同时负责车辆统计、订单统计、供需比计算和数据更新，违反单一职责原则。",
+      "suggestion": "拆分为多个私有方法：countVehiclesInGrid、countActiveOrdersInGrid、updateOrInsertDispatch。"
+    },
+    {
+      "id": "M6-008",
+      "severity": "MINOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/GridDispatchServiceImpl.java",
+      "line": 42,
+      "dimension": "error_handling",
+      "description": "calculateSupplyDemandRatio 对无效输入（null/空 gridId）静默返回 0.0，而非抛出异常。返回 0.0 可能被误解为'无供需'，掩盖调用方的 Bug。",
+      "suggestion": "对 null/空 gridId 抛出 BusinessException，与 GeoHashServiceImpl 的校验风格保持一致。"
+    },
+    {
+      "id": "M6-009",
+      "severity": "MINOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/GeoHashServiceImpl.java",
+      "line": 84,
+      "dimension": "performance",
+      "description": "encode 方法每次调用都输出 INFO 日志。在 updateGridCapacity 的全量遍历中，这会产生大量日志输出，影响性能。",
+      "suggestion": "将 encode 方法的日志级别改为 DEBUG，或移除每次调用的日志，仅在关键节点记录。"
+    },
+    {
+      "id": "M6-010",
+      "severity": "MINOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/DynamicPricingServiceImpl.java",
+      "line": 21,
+      "dimension": "code_quality",
+      "description": "DynamicPricingService 接口的 calculatePrice 返回 double，而实体中价格字段使用 BigDecimal。存在精度丢失风险，与项目其他地方的 BigDecimal 使用风格不一致。",
+      "suggestion": "考虑将返回类型改为 BigDecimal，或在接口文档中明确说明精度要求。"
+    },
+    {
+      "id": "M6-011",
+      "severity": "MINOR",
+      "file": "src/main/java/com/studyback/smartfleet/controller/PricingController.java",
+      "line": 68,
+      "dimension": "performance",
+      "description": "getSuggestions 接口在未指定 geohashes 参数时，加载所有 GridDispatch 记录并逐个生成调度建议，无分页限制。数据量大时可能导致超时。",
+      "suggestion": "添加分页参数或限制返回数量；或考虑异步处理大批量建议生成。"
+    },
+    {
+      "id": "M6-012",
+      "severity": "MINOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/GeoHashServiceImpl.java",
+      "line": 133,
+      "dimension": "correctness",
+      "description": "getNeighbors 方法的返回值文档声称返回 8 个邻居，但移除自身后可能返回 7 个或更少（边界情况、精度问题）。接口文档与实际行为不一致。",
+      "suggestion": "修正文档说明返回'最多 8 个邻居'，或确保实现始终返回恰好 8 个。"
+    },
+    {
+      "id": "M6-013",
+      "severity": "MINOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/DynamicPricingServiceImpl.java",
+      "line": 94,
+      "dimension": "correctness",
+      "description": "calculateTimeCoefficient 中深夜时段 (23:00-5:00) 的 hour 范围判断使用 hour >= 23 || hour < 5。hour == 5 到 hour == 7 之间（5:00-7:00）使用平峰系数 1.0，但逻辑上凌晨 5-7 点通常也属于低需求时段。建议与产品确认。",
+      "suggestion": "与产品确认 5:00-7:00 是否应归入深夜时段或平峰时段。"
+    }
+  ]
+}

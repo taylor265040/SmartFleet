@@ -1,0 +1,109 @@
+{
+  "milestone": "M4",
+  "round": 1,
+  "review_status": "FAIL",
+  "blocker_count": 3,
+  "major_count": 4,
+  "minor_count": 3,
+  "issues": [
+    {
+      "id": "M4-001",
+      "severity": "BLOCKER",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/RedisLockServiceImpl.java",
+      "line": 90,
+      "dimension": "correctness",
+      "description": "releaseLock 方法存在 TOCTOU（Time-of-Check-to-Time-of-Use）竞态条件。该方法先通过 redisUtil.get(key) 获取当前持有者，再比较 userId，最后调用 redisUtil.delete(key) 删除锁。这三步操作并非原子性执行。在 GET 和 DELETE 之间，锁可能已过期且被另一个用户获取，导致原持有者误删了别人的锁。应使用 Lua 脚本实现原子性的「校验持有者 + 删除」操作。",
+      "suggestion": "编写一个 release_lock.lua 脚本，在 Redis 中原子性地执行：检查 KEYS[1] 的值是否等于 ARGV[1]（userId），相等则 DEL，不相等则返回 0。类似：local current = redis.call('GET', KEYS[1]); if current == ARGV[1] then redis.call('DEL', KEYS[1]); return 1; end; return 0;"
+    },
+    {
+      "id": "M4-002",
+      "severity": "BLOCKER",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/OrderServiceImpl.java",
+      "line": 159,
+      "dimension": "correctness",
+      "description": "confirmOrder 方法中，车辆状态更新为 RENTING 和订单状态更新为 RUNNING 是两个独立的 retryService.executeWithRetry 调用。当车辆更新成功但订单更新失败（重试耗尽抛出 ConcurrentModificationException）时，@Transactional 会回滚数据库变更，但 Redis 预占锁状态和车辆缓存状态可能已不一致。此外，OrderStatus 枚举定义了 CONFIRMED 状态但代码中从未使用——confirmOrder 直接从 CREATED 跳转到 RUNNING，与 OrderStatus 枚举注释中的状态流转文档（CREATED -> CONFIRMED -> RUNNING -> COMPLETED）不一致，也与任务文档中 'created_order_status' 的 COMMENT 包含 CONFIRMED 状态不一致。",
+      "suggestion": "1) 确认状态流转设计：如果不需要 CONFIRMED 状态，从 OrderStatus 枚举和数据库 COMMENT 中移除；如果需要，confirmOrder 应先更新为 CONFIRMED 再到 RUNNING。2) 考虑将车辆和订单状态更新放在同一个原子操作中，或增加补偿机制确保一致性。"
+    },
+    {
+      "id": "M4-003",
+      "severity": "BLOCKER",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/OrderServiceImpl.java",
+      "line": 73,
+      "dimension": "correctness",
+      "description": "createOrder 方法在获取 Redis 预占锁之前先检查车辆状态是否 AVAILABLE（第 68 行），但获取锁之后使用乐观锁重试时又重新读取车辆状态（第 83-84 行）。在并发场景下，两个用户可能同时通过第 68 行的检查，然后一个获取锁成功、另一个失败——这是正确的。但问题在于 retryService.executeWithRetry 的 lambda 内部在更新失败时抛出 BusinessException 而非 ConcurrentModificationException，而 RetryServiceImpl 只捕获 ConcurrentModificationException 进行重试。这意味着如果乐观锁冲突导致 updateById 返回 false（MyBatis-Plus 的乐观锁冲突返回 affected rows = 0），lambda 返回 false 而非抛出异常，不会触发重试机制，直接走到第 93 行抛出 '更新车辆状态失败' 异常。乐观锁重试机制实际上未生效。",
+      "suggestion": "在 retryService 的 lambda 中，当 updateById 返回 false 时应抛出 ConcurrentModificationException 以触发重试，而非返回 false。例如：boolean updated = vehicleService.updateById(latestVehicle); if (!updated) throw new ConcurrentModificationException('乐观锁冲突'); return true;"
+    },
+    {
+      "id": "M4-004",
+      "severity": "MAJOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/OrderServiceImpl.java",
+      "line": 230,
+      "dimension": "correctness",
+      "description": "completeOrder 方法中，预占锁在第 231 行释放（redisLockService.releaseLock），而订单状态更新为 COMPLETED 在第 234-244 行。如果订单状态更新失败（重试耗尽），锁已被释放但订单仍为 RUNNING 状态。此时其他用户可以获取该车辆的预占锁并创建新订单，导致同一辆车有两个进行中的订单。",
+      "suggestion": "将锁释放操作移到订单状态更新成功之后执行。确保只有在订单状态成功更新为 COMPLETED 后才释放锁。"
+    },
+    {
+      "id": "M4-005",
+      "severity": "MAJOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/OrderServiceImpl.java",
+      "line": 338,
+      "dimension": "error_handling",
+      "description": "releaseVehicleAndLock 方法对车辆状态更新、锁释放、订单状态更新三个操作的异常分别用 try-catch 捕获并仅记录日志。如果车辆状态更新失败但订单状态更新成功，会导致车辆仍处于 RESERVED/RENTING 状态而订单已 CANCELLED 的数据不一致。静默吞掉异常使得调用方无法感知部分操作失败。",
+      "suggestion": "1) 对关键操作（如车辆状态更新）的失败应向上抛出异常或返回操作结果，而非静默忽略。2) 至少应收集所有失败操作并在方法结束时汇总抛出异常，或返回一个包含各步骤执行结果的对象。"
+    },
+    {
+      "id": "M4-006",
+      "severity": "MAJOR",
+      "file": "src/main/java/com/studyback/smartfleet/controller/OrderController.java",
+      "line": 39,
+      "dimension": "security",
+      "description": "OrderController 的所有接口通过 @RequestParam 接收 userId 参数，而非从 JWT 认证上下文中获取当前登录用户。虽然 SecurityConfig 配置了 JWT 过滤器且 /api/orders/** 接口需要认证，但 Controller 未使用认证信息。恶意用户可以通过传递其他用户的 userId 来操作别人的订单（创建订单、确认、完成、取消）。service 层虽然有 userId 校验（如 confirmOrder 检查 order.getUserId()），但那只是校验传入的 userId 与订单所有者匹配，无法防止伪造 userId。",
+      "suggestion": "从 SecurityContextHolder 获取当前认证用户的 ID，而非从请求参数中获取。例如：@AuthenticationPrincipal UserDetails userDetails 或通过自定义的 Authentication 对象获取 userId。删除所有接口的 userId @RequestParam 参数。"
+    },
+    {
+      "id": "M4-007",
+      "severity": "MAJOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/OrderServiceImpl.java",
+      "line": 81,
+      "dimension": "correctness",
+      "description": "retryService.executeWithRetry 只捕获 ConcurrentModificationException 进行重试，但 createOrder 中的 lambda 在车辆状态变更时抛出 BusinessException（第 85-86 行）。当两个并发请求同时通过了第 68 行的 AVAILABLE 检查并获取锁后（实际上只有一个能获取锁），如果在重试 lambda 内车辆状态已变为 RESERVED，抛出的是 BusinessException 而非 ConcurrentModificationException，不会触发重试。这与任务要求的「自旋重试机制（抢占失败时自动重评分与二次分配）」不一致。",
+      "suggestion": "1) 扩展 RetryServiceImpl 支持配置可重试的异常类型（不仅限于 ConcurrentModificationException）。2) 或在 lambda 内部将业务异常转换为 ConcurrentModificationException 以触发重试。3) 明确文档化重试机制的触发条件。"
+    },
+    {
+      "id": "M4-008",
+      "severity": "MINOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/OrderServiceImpl.java",
+      "line": 68,
+      "dimension": "code_quality",
+      "description": "车辆状态使用字符串字面量 'AVAILABLE'、'RESERVED'、'RENTING' 散布在 OrderServiceImpl 的多个方法中，而 Vehicle 实体类的 status 字段注释中列出了这些状态值。应使用枚举或常量统一管理，避免拼写错误和维护困难。",
+      "suggestion": "创建 VehicleStatus 枚举（类似 OrderStatus），在所有使用车辆状态字符串的地方替换为枚举引用。"
+    },
+    {
+      "id": "M4-009",
+      "severity": "MINOR",
+      "file": "src/main/java/com/studyback/smartfleet/entity/OrderStatus.java",
+      "line": 17,
+      "dimension": "code_quality",
+      "description": "OrderStatus 枚举定义了 CONFIRMED('CONFIRMED', '已确认') 状态，但在整个代码库中从未使用。OrderServiceImpl.confirmOrder 直接将状态从 CREATED 更新为 RUNNING。这个未使用的枚举值会导致开发者困惑，以为存在 CREATED -> CONFIRMED -> RUNNING 的流转。",
+      "suggestion": "如果 CONFIRMED 状态确实不需要，从枚举中移除并更新类注释。如果未来需要，在 confirmOrder 中使用它。"
+    },
+    {
+      "id": "M4-010",
+      "severity": "MINOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/RetryServiceImpl.java",
+      "line": 46,
+      "dimension": "error_handling",
+      "description": "RetryServiceImpl.executeWithRetry 在所有重试失败后将 lastException 强制转换为 ConcurrentModificationException 并抛出（第 65 行）。虽然当前只捕获 ConcurrentModificationException 所以类型安全，但如果未来扩展支持其他异常类型，此处会出现 ClassCastException。此外，原始异常的堆栈信息在重试过程中被覆盖。",
+      "suggestion": "使用更通用的异常处理方式，如包装为 RuntimeException 或使用泛型异常类型。保留原始异常链。"
+    }
+  ],
+  "summary": {
+    "lua_script_atomicity": "preemptive_lock.lua 的 tryLock 操作是原子性的（单个 Lua 脚本），但 releaseLock 操作不是原子性的（GET + 比较 + DELETE 分步执行），存在 TOCTOU 竞态条件",
+    "optimistic_lock_usage": "Order 和 Vehicle 实体均使用 @Version 注解，MybatisPlusConfig 已配置 OptimisticLockerInnerInterceptor。但 RetryService 只捕获 ConcurrentModificationException，而实际 lambda 中乐观锁冲突时 updateById 返回 false 而非抛异常，导致重试机制实际未生效",
+    "spin_retry_mechanism": "RetryServiceImpl 实现了自旋重试（最多 3 次，间隔 100ms），但触发条件过窄（仅 ConcurrentModificationException），与任务要求的预占失败自动重试不匹配",
+    "order_state_flow": "状态流转：CREATED -> RUNNING -> COMPLETED/CANCELLED，但 OrderStatus 枚举中定义了未使用的 CONFIRMED 状态，与枚举注释和数据库 COMMENT 不一致",
+    "quick_rent_implementation": "正确调用 VehicleScoringService.recommendForList 获取推荐列表，依次尝试 createOrder 直到成功，预占失败时捕获 BusinessException 继续下一辆",
+    "lock_release_safety": "releaseLock 通过比较 userId 防止误释放，但检查和删除非原子操作，存在并发下误释放风险",
+    "redis_config": "RedisConfig 已配置 JSON 序列化，Lua 脚本通过 ClassPathResource 加载，RedisUtil 封装了异常处理"
+  }
+}

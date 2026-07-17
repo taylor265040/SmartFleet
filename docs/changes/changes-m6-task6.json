@@ -1,0 +1,45 @@
+{
+  "taskId": "task6",
+  "task_name": "M6 - 区域运力调度与动态定价",
+  "modified_files": [
+    "src/main/java/com/studyback/smartfleet/service/GridDispatchService.java",
+    "src/main/java/com/studyback/smartfleet/service/impl/GridDispatchServiceImpl.java",
+    "src/main/java/com/studyback/smartfleet/controller/GridDispatchController.java",
+    "docs/sql/schema.sql"
+  ],
+  "new_files": [
+    "src/main/java/com/studyback/smartfleet/entity/GeoHashPoint.java",
+    "src/main/java/com/studyback/smartfleet/entity/PricingRule.java",
+    "src/main/java/com/studyback/smartfleet/entity/DispatchSuggestion.java",
+    "src/main/java/com/studyback/smartfleet/mapper/PricingRuleMapper.java",
+    "src/main/java/com/studyback/smartfleet/mapper/DispatchSuggestionMapper.java",
+    "src/main/java/com/studyback/smartfleet/service/GeoHashService.java",
+    "src/main/java/com/studyback/smartfleet/service/DynamicPricingService.java",
+    "src/main/java/com/studyback/smartfleet/service/CapacityDispatchService.java",
+    "src/main/java/com/studyback/smartfleet/service/impl/GeoHashServiceImpl.java",
+    "src/main/java/com/studyback/smartfleet/service/impl/DynamicPricingServiceImpl.java",
+    "src/main/java/com/studyback/smartfleet/service/impl/CapacityDispatchServiceImpl.java",
+    "src/main/java/com/studyback/smartfleet/controller/PricingController.java",
+    "docs/changes/changes-m6-task6.json"
+  ],
+  "deleted_files": [],
+  "dependencies": [
+    "Vehicle entity (currentLat, currentLng, status)",
+    "Order entity (status, startLat, startLng)",
+    "GridDispatch entity (geohash, totalVehicles, availableCount, demandCount, supplyDemand)",
+    "GridDispatchMapper"
+  ],
+  "exposed_apis": [
+    { "method": "GET", "path": "/api/grid-dispatches/{geohash}", "desc": "根据GeoHash查询网格运力" },
+    { "method": "GET", "path": "/api/grid-dispatches/supply-demand/{geohash}", "desc": "查询网格供需比" },
+    { "method": "GET", "path": "/api/grid-dispatches/distribution", "desc": "查询车辆分布统计" },
+    { "method": "GET", "path": "/api/pricing/{geohash}", "desc": "查询动态价格" },
+    { "method": "GET", "path": "/api/pricing/suggestions", "desc": "查询调度建议" }
+  ],
+  "has_database_change": true,
+  "database_changes": [
+    { "type": "CREATE_TABLE", "table": "tb_pricing_rule" },
+    { "type": "CREATE_TABLE", "table": "tb_dispatch_suggestion" }
+  ],
+  "compile_status": "SUCCESS"
+}

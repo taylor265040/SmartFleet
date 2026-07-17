@@ -1,0 +1,114 @@
+{
+  "milestone": "M2",
+  "round": 1,
+  "review_status": "FAIL",
+  "blocker_count": 2,
+  "major_count": 4,
+  "minor_count": 7,
+  "issues": [
+    {
+      "severity": "BLOCKER",
+      "file": "src/main/resources/application.yml",
+      "line": 41,
+      "dimension": "security",
+      "description": "JWT 密钥硬编码在 application.yml 中并提交到代码仓库。任何人获取代码仓库访问权限即可伪造任意用户 Token。密钥值为 'U21hcnRGbGVldFNlY3VyaXR5S2V5Rm9ySldUVG9rZW5HZW5lcmF0aW9uMjAyNA=='，可被 Base64 解码为明文。",
+      "suggestion": "将 JWT 密钥移至环境变量或配置中心。使用 ${JWT_SECRET} 占位符引用外部配置，禁止将密钥提交到版本控制。"
+    },
+    {
+      "severity": "BLOCKER",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/AuthServiceImpl.java",
+      "line": 96,
+      "dimension": "security",
+      "description": "refreshToken() 方法验证 Token 有效性后，未检查 Token 的 'type' claim 是否为 'refresh'。攻击者可将 access token 作为 refreshToken 参数传入，绕过 Token 类型限制，用一个 access token 获取新的 access token + refresh token，削弱了双 Token 机制的安全性。",
+      "suggestion": "在 refreshToken() 方法中增加 Token 类型校验：从 claims 中获取 'type' 字段，若不等于 'refresh' 则抛出 BusinessException。建议在 JwtUtil 中新增 extractTokenType(String token) 方法。"
+    },
+    {
+      "severity": "MAJOR",
+      "file": "src/main/java/com/studyback/smartfleet/exception/GlobalExceptionHandler.java",
+      "line": 31,
+      "dimension": "correctness",
+      "description": "BusinessException 处理方法使用 @ResponseStatus(HttpStatus.OK)，导致所有业务异常（包括登录失败 401、权限不足 403、资源冲突 409 等）均以 HTTP 200 返回。违反 RESTful 规范，前端无法通过 HTTP 状态码区分成功和失败，也与 SecurityConfig 中自定义的 401/403 响应不一致。",
+      "suggestion": "为 BusinessException 处理方法动态设置 HTTP 状态码。可根据 ResultCode 的 code 映射到对应的 HttpStatus（如 401->UNAUTHORIZED, 403->FORBIDDEN, 409->CONFLICT），或使用 response.setStatus() 动态设置。"
+    },
+    {
+      "severity": "MAJOR",
+      "file": "src/main/java/com/studyback/smartfleet/config/SecurityConfig.java",
+      "line": 127,
+      "dimension": "security",
+      "description": "CORS 配置使用 setAllowedOriginPatterns(List.of('*')) 允许所有来源，同时 setAllowCredentials(true)。虽然 Spring 6.1+ 对 '*' + credentials 做了特殊处理（回显 Origin），但仍等效于允许任意来源携带凭据发起跨域请求，存在 CSRF 和数据泄露风险。",
+      "suggestion": "将 allowedOriginPatterns 限制为前端实际部署域名列表。开发环境可通过配置文件注入 localhost 地址。"
+    },
+    {
+      "severity": "MAJOR",
+      "file": "src/main/java/com/studyback/smartfleet/entity/RoleEnum.java",
+      "line": 12,
+      "dimension": "correctness",
+      "description": "RoleEnum 定义角色编码为 'ROLE_USER' 和 'ROLE_ADMIN'，但数据库 schema.sql 中 tb_user 表的 role 列默认值为 'USER'（无 ROLE_ 前缀）。若数据库直接插入数据或有遗留数据，角色编码不匹配将导致 Spring Security 的 hasAuthority('ROLE_ADMIN') 校验失败。",
+      "suggestion": "统一角色编码。建议修改 schema.sql 中 role 列的默认值为 'ROLE_USER'，与 RoleEnum 保持一致。或在代码中做兼容处理。"
+    },
+    {
+      "severity": "MAJOR",
+      "file": "src/test/java/com/studyback/smartfleet/",
+      "line": 0,
+      "dimension": "correctness",
+      "description": "M2 任务要求编写用户注册、登录、JWT Token 生成验证、Token 刷新、权限控制等单元测试和集成测试，但 src/test 目录下未找到任何 M2 相关的测试代码。任务清单中明确列出了 test-record 测试用例均未实现。",
+      "suggestion": "按照 task2-m2-user-auth.md 中的测试用例记录，补充 AuthServiceImpl、JwtUtil、SecurityConfig 的单元测试和集成测试。"
+    },
+    {
+      "severity": "MINOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/AuthServiceImpl.java",
+      "line": 128,
+      "dimension": "code_quality",
+      "description": "getCurrentUser() 方法中使用全限定类名 org.springframework.security.core.context.SecurityContextHolder 访问 Security 上下文，未在文件头部 import。与同文件其他 import 风格不一致。",
+      "suggestion": "在文件头部添加 import org.springframework.security.core.context.SecurityContextHolder，方法内使用简短类名。"
+    },
+    {
+      "severity": "MINOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/AuthServiceImpl.java",
+      "line": 34,
+      "dimension": "code_quality",
+      "description": "AuthServiceImpl 同时注入 UserMapper 和 UserService。register/login/refreshToken/getCurrentUser 四个方法均直接通过 UserMapper 构建 LambdaQueryWrapper 查询用户，绕过了 UserService 的 IService 接口。存在职责不清和代码重复。",
+      "suggestion": "统一通过 UserService（IService<User>）的 getOne(wrapper) 方法查询用户，移除对 UserMapper 的直接依赖，遵循 Service 层抽象原则。"
+    },
+    {
+      "severity": "MINOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/AuthServiceImpl.java",
+      "line": 126,
+      "dimension": "performance",
+      "description": "getCurrentUser() 每次请求都通过 username 查询数据库获取用户信息。用户名已存在于 JWT Token 的 subject 中，Spring Security 上下文中也已缓存。若仅需返回用户信息，可考虑从 Token claims 中提取角色等信息，减少一次 DB 查询。",
+      "suggestion": "对于高频访问的 /api/auth/me 接口，可考虑：(1) 在 JwtAuthenticationFilter 中将完整用户信息放入 SecurityContext 的 principal 中；(2) 或对用户信息做短期缓存。"
+    },
+    {
+      "severity": "MINOR",
+      "file": "src/main/java/com/studyback/smartfleet/entity/RoleEnum.java",
+      "line": 35,
+      "dimension": "code_quality",
+      "description": "RoleEnum.fromCode() 方法已实现但在整个 M2 代码中未被调用。AuthServiceImpl 直接使用 RoleEnum.ROLE_USER.getCode() 设置角色。",
+      "suggestion": "确认 fromCode() 是否为后续里程碑预留。若无使用计划，可暂时移除以避免死代码。"
+    },
+    {
+      "severity": "MINOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/AuthServiceImpl.java",
+      "line": 57,
+      "dimension": "code_quality",
+      "description": "register() 方法手动设置 isDeleted(0)，但 User 实体的 isDeleted 字段已标注 @TableLogic 注解，MyBatis-Plus 会自动处理逻辑删除字段。手动设置冗余且可能与框架行为冲突。",
+      "suggestion": "移除 user.setIsDeleted(0)，依赖 @TableLogic 注解的默认行为。"
+    },
+    {
+      "severity": "MINOR",
+      "file": "src/main/resources/application.yml",
+      "line": 38,
+      "dimension": "security",
+      "description": "JWT 密钥轮换和 Token 吊销机制未实现。一旦密钥泄露，已签发的所有 Token 在过期前均有效。当前无 Token 黑名单或密钥版本管理。",
+      "suggestion": "后续里程碑考虑引入 Redis 存储 Token 黑名单或实现密钥版本号（kid）机制，以便紧急吊销 Token。当前可记录为技术债务。"
+    },
+    {
+      "severity": "MINOR",
+      "file": "src/main/java/com/studyback/smartfleet/config/SecurityConfig.java",
+      "line": 62,
+      "dimension": "performance",
+      "description": "BCryptPasswordEncoder 使用默认强度（rounds=10）。任务清单建议 rounds 为 10-12，当前值可接受但未显式声明。",
+      "suggestion": "显式声明 BCrypt 强度：new BCryptPasswordEncoder(10)，便于后续调整。"
+    }
+  ]
+}

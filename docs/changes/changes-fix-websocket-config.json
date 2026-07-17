@@ -1,0 +1,14 @@
+{
+  "taskId": "fix-websocket-config",
+  "task_name": "修复 WebSocket 配置属性加载问题（@Value 默认值）",
+  "modified_files": [
+    "src/main/java/com/studyback/smartfleet/config/WebSocketConfig.java"
+  ],
+  "new_files": [],
+  "deleted_files": [],
+  "dependencies": [],
+  "exposed_apis": [],
+  "has_database_change": false,
+  "database_changes": [],
+  "compile_status": "SUCCESS"
+}

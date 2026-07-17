@@ -1,0 +1,35 @@
+{
+  "milestone": "M5",
+  "round": 1,
+  "compile_status": "SUCCESS",
+  "unit_test_status": "SKIPPED",
+  "unit_test_reason": "无 MySQL/Redis/RocketMQ 服务运行，跳过集成测试执行。代码审查已完成。",
+  "total_tests": 0,
+  "passed": 0,
+  "failed": 0,
+  "skipped": 0,
+  "pass_rate": "N/A",
+  "line_coverage": "N/A",
+  "branch_coverage": "N/A",
+  "review_status": "PASS",
+  "blocker_count": 0,
+  "major_count": 6,
+  "minor_count": 2,
+  "gate_decision": "PASS",
+  "gate_reason": "编译成功，无 BLOCKER 级问题。6个 MAJOR 问题已记录（异常处理1项、性能3项、代码质量2项），2个 MINOR 问题。状态机核心逻辑正确，状态转移矩阵覆盖完整，乐观锁并发控制正确，Redis缓存降级策略合理。MAJOR 问题不阻塞当前里程碑发布，建议在后续迭代中修复。",
+  "failed_details": [],
+  "issues_summary": {
+    "MAJOR": [
+      "M5-001: saveStateChangeRecord 吞掉异常导致审计记录可能丢失",
+      "M5-002: countByStatus N+1 查询（应使用 GROUP BY）",
+      "M5-003: getStateChangeHistory 缺少分页",
+      "M5-004: StateTransition 实体类为死代码",
+      "M5-005: VehicleStateMachine 接口暴露 setCurrentState 破坏封装",
+      "M5-006: tb_state_change_record 缺少 (vehicle_id, change_time) 复合索引"
+    ],
+    "MINOR": [
+      "M5-007: VehicleStatus.fromValue 未知值静默返回 null",
+      "M5-008: canTransition 中 currentState 判空冗余"
+    ]
+  }
+}

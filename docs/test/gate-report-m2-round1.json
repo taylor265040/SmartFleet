@@ -1,0 +1,20 @@
+{
+  "milestone": "M2",
+  "round": 1,
+  "compile_status": "SUCCESS",
+  "unit_test_status": "NOT_EXECUTED",
+  "total_tests": 0,
+  "passed": 0,
+  "failed": 0,
+  "skipped": 0,
+  "pass_rate": "N/A",
+  "line_coverage": "N/A",
+  "branch_coverage": "N/A",
+  "gate_decision": "BLOCKED",
+  "block_reasons": [
+    "BLOCKER: JWT 密钥硬编码在 application.yml 中，必须移至外部配置",
+    "BLOCKER: refreshToken() 未校验 Token 类型，存在安全漏洞",
+    "MAJOR: 缺少 M2 全部单元测试和集成测试代码"
+  ],
+  "failed_details": []
+}

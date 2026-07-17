@@ -1,0 +1,43 @@
+{
+  "taskId": "task3",
+  "task_name": "M3 - 智能车辆调度引擎",
+  "modified_files": [
+    "src/main/resources/application.yml"
+  ],
+  "new_files": [
+    "src/main/java/com/studyback/smartfleet/entity/ScoringDimension.java",
+    "src/main/java/com/studyback/smartfleet/entity/ScoringScene.java",
+    "src/main/java/com/studyback/smartfleet/entity/ScoringStrategy.java",
+    "src/main/java/com/studyback/smartfleet/entity/AbstractScoringStrategy.java",
+    "src/main/java/com/studyback/smartfleet/entity/NormalScoringStrategy.java",
+    "src/main/java/com/studyback/smartfleet/entity/PeakHourScoringStrategy.java",
+    "src/main/java/com/studyback/smartfleet/entity/LowBatteryScoringStrategy.java",
+    "src/main/java/com/studyback/smartfleet/entity/ScoringResult.java",
+    "src/main/java/com/studyback/smartfleet/entity/VehicleRecommendation.java",
+    "src/main/java/com/studyback/smartfleet/config/ScoringStrategyFactory.java",
+    "src/main/java/com/studyback/smartfleet/config/ScoringWeightConfig.java",
+    "src/main/java/com/studyback/smartfleet/service/VehicleScoringService.java",
+    "src/main/java/com/studyback/smartfleet/service/impl/VehicleScoringServiceImpl.java",
+    "src/main/java/com/studyback/smartfleet/controller/VehicleRecommendController.java"
+  ],
+  "deleted_files": [],
+  "dependencies": [
+    "M1 (基础设施)",
+    "M2 (用户认证)"
+  ],
+  "exposed_apis": [
+    {
+      "method": "GET",
+      "path": "/api/vehicles/recommend/map",
+      "desc": "地图区域车辆推荐（返回带坐标的车辆列表，按评分降序排序）"
+    },
+    {
+      "method": "GET",
+      "path": "/api/vehicles/recommend/list",
+      "desc": "车辆列表推荐（不含坐标，按评分降序排序）"
+    }
+  ],
+  "has_database_change": false,
+  "database_changes": [],
+  "compile_status": "SUCCESS"
+}

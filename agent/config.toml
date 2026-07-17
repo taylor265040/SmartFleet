@@ -1,0 +1,55 @@
+# SmartFleet 项目全局配置
+
+[project]
+name = "SmartFleet"
+description = "智能车辆租赁管理平台"
+version = "0.1.0"
+
+[language]
+java = "17"
+framework = "Spring Boot 3.x"
+orm = "MyBatis-Plus"
+build_tool = "Maven"
+
+[database]
+type = "MySQL 8.0"
+charset = "utf8mb4"
+engine = "InnoDB"
+
+[middleware]
+redis = "Spring Data Redis"
+mq = "RocketMQ"
+security = "Spring Security + JWT"
+
+[conventions]
+package_base = "com.studyback.smartfleet"
+entity_package = "com.studyback.smartfleet.entity"
+mapper_package = "com.studyback.smartfleet.mapper"
+service_package = "com.studyback.smartfleet.service"
+controller_package = "com.studyback.smartfleet.controller"
+
+[conventions.naming]
+entity = "对应数据库表名，驼峰命名（如 Vehicle 对应 tb_vehicle）"
+mapper = "实体名 + Mapper（如 VehicleMapper）"
+service_interface = "实体名 + Service（如 VehicleService）"
+service_impl = "实体名 + ServiceImpl（如 VehicleServiceImpl）"
+controller = "实体名 + Controller（如 VehicleController）"
+
+[conventions.response]
+success_code = 200
+error_code_base = 500
+format = "{ code, message, data, traceId, timestamp }"
+
+[conventions.logging]
+pattern = "[%d{yyyy-MM-dd HH:mm:ss}] [%thread] [%X{traceId}] [%level] %logger{36} - %msg%n"
+file_info = "logs/smartfleet-info.log"
+file_error = "logs/smartfleet-error.log"
+max_history_days = 30
+total_size_cap = "2GB"
+
+[paths]
+spec = "docs/spec.md"
+design = "docs/design/"
+test = "src/test/java/com/studyback/smartfleet/"
+src = "src/main/java/com/studyback/smartfleet/"
+resources = "src/main/resources/"

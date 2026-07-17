@@ -1,0 +1,46 @@
+{
+  "current_milestone": null,
+  "current_stage": null,
+  "milestone_status": {
+    "M1": "COMPLETED",
+    "M2": "COMPLETED",
+    "M3": "COMPLETED_WITH_DEBT",
+    "M4": "COMPLETED",
+    "M5": "COMPLETED",
+    "M6": "COMPLETED",
+    "M7": "COMPLETED"
+  },
+  "active_worktrees": [],
+  "technical_debt": [
+    {
+      "milestone": "M3",
+      "issue": "calculateWeightedScore 方法忽略 weights 参数，始终使用 NORMAL 策略",
+      "severity": "BLOCKER",
+      "file": "VehicleScoringServiceImpl.java"
+    },
+    {
+      "milestone": "M5",
+      "issue": "saveStateChangeRecord() 吞掉异常，审计记录可能丢失",
+      "severity": "MAJOR",
+      "file": "VehicleStateServiceImpl.java"
+    },
+    {
+      "milestone": "M5",
+      "issue": "countByStatus() 对 5 种状态各执行一次 COUNT，应改为 GROUP BY",
+      "severity": "MAJOR",
+      "file": "VehicleStateServiceImpl.java"
+    },
+    {
+      "milestone": "M6",
+      "issue": "updateGridCapacity 全表扫描，性能瓶颈",
+      "severity": "MAJOR",
+      "file": "GridDispatchServiceImpl.java"
+    },
+    {
+      "milestone": "M6",
+      "issue": "PricingRule 实体未使用，定价逻辑硬编码",
+      "severity": "MAJOR",
+      "file": "DynamicPricingServiceImpl.java"
+    }
+  ]
+}

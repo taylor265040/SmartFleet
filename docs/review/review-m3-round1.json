@@ -1,0 +1,99 @@
+{
+  "milestone": "M3",
+  "round": 1,
+  "review_status": "FAIL",
+  "blocker_count": 1,
+  "major_count": 4,
+  "minor_count": 4,
+  "issues": [
+    {
+      "id": "M3-001",
+      "severity": "BLOCKER",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/VehicleScoringServiceImpl.java",
+      "line": 94,
+      "dimension": "correctness",
+      "description": "calculateWeightedScore 方法接收 weights 参数但完全忽略它，始终使用 ScoringScene.NORMAL 策略的固定权重。接口文档声明支持自定义权重，测试用例 testWeightedScoreCalculation 也传入了自定义权重 Map，但实际实现中该参数未被使用。这违反了策略模式的设计意图和接口契约。",
+      "suggestion": "应使用传入的 weights 参数直接计算加权分数，或接受 ScoringScene 参数来选择策略。例如：在方法内直接用传入的 weights 做加权计算，而非委托给 strategyFactory。"
+    },
+    {
+      "id": "M3-002",
+      "severity": "MAJOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/VehicleScoringServiceImpl.java",
+      "line": 233,
+      "dimension": "correctness",
+      "description": "calculateVehicleScore 私有方法硬编码使用 ScoringScene.NORMAL 策略，而 recommendForMap 和 recommendForList 都调用此方法。任务要求支持三种场景（NORMAL、PEAK_HOUR、LOW_BATTERY）的评分策略，但推荐接口无法指定使用哪种场景策略，始终使用普通策略。",
+      "suggestion": "将 ScoringScene 作为参数传入 calculateVehicleScore，并在 recommendForMap/recommendForList 接口中支持 scene 参数（可选，默认 NORMAL）。"
+    },
+    {
+      "id": "M3-003",
+      "severity": "MAJOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/VehicleScoringServiceImpl.java",
+      "line": 153,
+      "dimension": "security",
+      "description": "recommendForMap 的 stream 操作中直接调用 vehicle.getCurrentLat().doubleValue() 和 vehicle.getCurrentLng().doubleValue()，虽然 loadAvailableVehicles 查询条件包含 isNotNull 过滤，但如果数据库中存在精度异常的 BigDecimal 值（如 NaN），或者未来查询条件变更，可能抛出 NullPointerException。stream 内缺少 null 安全检查。",
+      "suggestion": "在 stream 的 map 操作中添加 null 检查：if (vehicle.getCurrentLat() == null || vehicle.getCurrentLng() == null) return null;。同时建议在 haversineDistance 方法入口处也做防御性校验。"
+    },
+    {
+      "id": "M3-004",
+      "severity": "MAJOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/VehicleScoringServiceImpl.java",
+      "line": 139,
+      "dimension": "performance",
+      "description": "缓存 key 使用原始浮点数拼接（如 sf:recommend:map:30.5:114.3:10.0:20），用户位置微小变化（30.5 vs 30.5000001）会导致缓存命中率极低。对于推荐场景，同区域的用户应共享缓存结果。",
+      "suggestion": "对经纬度进行精度截断（如保留2位小数），使用 String.format(\"%.2f\", lat) 构建缓存 key，提高缓存命中率。"
+    },
+    {
+      "id": "M3-005",
+      "severity": "MAJOR",
+      "file": "src/main/java/com/studyback/smartfleet/service/impl/VehicleScoringServiceImpl.java",
+      "line": 257,
+      "dimension": "performance",
+      "description": "loadAvailableVehicles 使用无分页的 selectList 查询所有可用车辆。当车辆数据量增长到数千或数万时，会导致全表扫描、内存溢出和响应时间剧增。任务要求性能满足 500ms 响应时间，全表加载无法保证。",
+      "suggestion": "1) 使用地理空间索引（MySQL SPATIAL 或 Geohash）预筛选范围内的车辆；2) 使用分页查询 + 流式处理；3) 考虑将车辆位置数据存入 Redis GEO 类型，利用 GEORADIUS 先筛选再评分。"
+    },
+    {
+      "id": "M3-006",
+      "severity": "MINOR",
+      "file": "src/main/java/com/studyback/smartfleet/entity/NormalScoringStrategy.java",
+      "line": 13,
+      "dimension": "code_quality",
+      "description": "三个策略类（NormalScoringStrategy、PeakHourScoringStrategy、LowBatteryScoringStrategy）的 DEFAULT_WEIGHTS 与 ScoringWeightConfig.getDefaultWeights() 中的默认权重完全重复。当需要修改默认权重时，需要同时修改两处，容易产生不一致。",
+      "suggestion": "将默认权重统一定义在一处（如 ScoringWeightConfig），策略类通过工厂注入权重配置，避免硬编码重复。"
+    },
+    {
+      "id": "M3-007",
+      "severity": "MINOR",
+      "file": "src/main/java/com/studyback/smartfleet/config/ScoringWeightConfig.java",
+      "line": 39,
+      "dimension": "code_quality",
+      "description": "ScoringWeightConfig 使用 @Configuration 注解，但它仅用于绑定配置属性（@ConfigurationProperties），不定义任何 @Bean 方法。@Configuration 会创建 CGLIB 代理，增加不必要的开销。",
+      "suggestion": "将 @Configuration 改为 @Component，或直接使用 @EnableConfigurationProperties(ScoringWeightConfig.class) 在配置类上启用。"
+    },
+    {
+      "id": "M3-008",
+      "severity": "MINOR",
+      "file": "src/main/java/com/studyback/smartfleet/entity/AbstractScoringStrategy.java",
+      "line": 33,
+      "dimension": "code_quality",
+      "description": "updateWeights 方法先调用 this.rawWeights.clear() 清除原始数据，然后 putAll 新数据。虽然 rawWeights 在 normalize 之后不再被读取，但这种修改构造函数传入的 'final' 语义字段的做法容易引起混淆，且非线程安全。",
+      "suggestion": "1) 将 rawWeights 改为 volatile 或使用 AtomicReference 保证可见性；2) normalizedWeights 的更新也应使用 synchronized 或 AtomicReference 保证原子性，避免并发读取时看到不一致的状态。"
+    },
+    {
+      "id": "M3-009",
+      "severity": "MINOR",
+      "file": "src/main/java/com/studyback/smartfleet/controller/VehicleRecommendController.java",
+      "line": 1,
+      "dimension": "error_handling",
+      "description": "Controller 层没有全局异常处理来捕获 IllegalArgumentException（由坐标校验、limit 校验等抛出）。当参数不合法时，Spring 默认返回 500 状态码而非 400，影响 API 的规范性和前端错误处理。",
+      "suggestion": "添加 @RestControllerAdvice 全局异常处理类，将 IllegalArgumentException 映射为 400 Bad Request 响应。或在 Controller 方法中添加 @ExceptionHandler。"
+    }
+  ],
+  "summary": {
+    "haversine_formula": "正确，使用标准 Haversine 公式，地球半径 6371.0 km",
+    "score_range_0_100": "正确，AbstractScoringStrategy.calculateScore 使用 Math.max(0, Math.min(100, score)) 兜底",
+    "weight_normalization": "正确，normalize 方法将权重除以总和，全零权重时使用等权重",
+    "strategy_pattern": "基本完整，支持三种场景（NORMAL/PEAK_HOUR/LOW_BATTERY），但推荐接口无法选择场景",
+    "redis_caching": "已实现，TTL 300秒，有降级逻辑，但缓存 key 精度过高导致命中率低",
+    "coordinate_validation": "正确，validateCoordinates 校验纬度 -90~90、经度 -180~180"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "taskId": "task4",
+  "task_name": "M4 高并发租赁一致性控制",
+  "modified_files": [
+    "src/main/java/com/studyback/smartfleet/service/OrderService.java",
+    "src/main/java/com/studyback/smartfleet/service/impl/OrderServiceImpl.java",
+    "src/main/java/com/studyback/smartfleet/service/impl/RedisLockServiceImpl.java",
+    "src/main/java/com/studyback/smartfleet/controller/OrderController.java",
+    "docs/sql/schema.sql"
+  ],
+  "new_files": [
+    "src/main/resources/lua/preemptive_lock.lua",
+    "src/main/resources/lua/release_lock.lua",
+    "src/main/java/com/studyback/smartfleet/service/RedisLockService.java",
+    "src/main/java/com/studyback/smartfleet/service/impl/RedisLockServiceImpl.java",
+    "src/main/java/com/studyback/smartfleet/service/RetryService.java",
+    "src/main/java/com/studyback/smartfleet/service/impl/RetryServiceImpl.java",
+    "src/main/java/com/studyback/smartfleet/entity/OrderStatus.java"
+  ],
+  "deleted_files": [],
+  "dependencies": [
+    "Redis（用于预占锁）",
+    "MySQL（用于订单存储和乐观锁）",
+    "VehicleScoringService（用于一键租赁推荐）",
+    "VehicleService（用于车辆状态更新）"
+  ],
+  "exposed_apis": [
+    { "method": "POST", "path": "/api/orders", "desc": "创建订单（预占锁 + 乐观锁）" },
+    { "method": "PUT", "path": "/api/orders/{id}/confirm", "desc": "确认订单" },
+    { "method": "PUT", "path": "/api/orders/{id}/complete", "desc": "完成订单" },
+    { "method": "PUT", "path": "/api/orders/{id}/cancel", "desc": "取消订单" },
+    { "method": "POST", "path": "/api/orders/quick-rent", "desc": "一键租赁" },
+    { "method": "GET", "path": "/api/orders/{id}", "desc": "查询订单详情" },
+    { "method": "GET", "path": "/api/orders", "desc": "查询订单列表（支持按用户ID和状态筛选）" }
+  ],
+  "has_database_change": true,
+  "database_changes": [
+    { "type": "ALTER_TABLE", "table": "tb_order", "desc": "status 字段 COMMENT 更新为包含 CONFIRMED 状态" }
+  ],
+  "compile_status": "SUCCESS"
+}
