@@ -1,6 +1,6 @@
 package com.studyback.smartfleet.config;
 
-import tools.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.studyback.smartfleet.filter.JwtAuthenticationFilter;
 import com.studyback.smartfleet.response.ApiResponse;
 import com.studyback.smartfleet.response.ResultCode;

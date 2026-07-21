@@ -1,7 +1,7 @@
 package com.studyback.smartfleet.service.impl;
 
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.studyback.smartfleet.entity.Vehicle;
 import com.studyback.smartfleet.service.CacheAsideService;
 import com.studyback.smartfleet.service.RocketMQConsumerService;
